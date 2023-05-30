@@ -9,10 +9,12 @@ from models import storage
 from models.place import Place
 from models.user import User
 from models.city import City
+from models.amenity import Amenity
+from models.state import State
 from api.v1.views import app_views
 
 
-@app_views.route('/cities/<city_id>/places', methods=['GET', 'POST'])
+@app_views.route('/cities/<city_id>/places', methods=['GET', 'POST'], strict_slashes=False)
 def places(city_id):
     """Retrieves all place objects of a city"""
     city = storage.get(City, city_id)
@@ -47,7 +49,7 @@ def places(city_id):
         storage.save()
         return jsonify(new_place.to_dict()), 201
 
-@app_views.route('/places/<place_id>', methods=['GET', 'DELETE', 'PUT'])
+@app_views.route('/places/<place_id>', methods=['GET', 'DELETE', 'PUT'], strict_slashes=False)
 def place(place_id):
     """Retrieves, updates and deletes places by id"""
     place = storage.get(Place, place_id)
@@ -70,3 +72,46 @@ def place(place_id):
                 setattr(place, key, value)
         storage.save()
         return make_response(jsonify(place.to_dict()), 200)
+@app_views.route('/cities/<city_id>/places', methods=['POST'],
+                 strict_slashes=False)
+def create_place(city_id):
+    '''
+        create new place obj through city association using POST
+    '''
+    if not request.get_json():
+        return jsonify({"error": "Not a JSON"}), 400
+    elif "name" not in request.get_json():
+        return jsonify({"error": "Missing name"}), 400
+    elif "user_id" not in request.get_json():
+        return jsonify({"error": "Missing user_id"}), 400
+    else:
+        obj_data = request.get_json()
+        city = storage.get("City", city_id)
+        user = storage.get("User", obj_data['user_id'])
+        if city is None or user is None:
+            abort(404)
+        obj_data['city_id'] = city.id
+        obj_data['user_id'] = user.id
+        obj = Place(**obj_data)
+        obj.save()
+        return jsonify(obj.to_dict()), 201
+
+
+@app_views.route('/places/<place_id>', methods=['PUT'], strict_slashes=False)
+def update_place(place_id):
+    '''
+        update existing place object using PUT
+    '''
+    if not request.get_json():
+        return jsonify({"error": "Not a JSON"}), 400
+
+    obj = storage.get("Place", place_id)
+    if obj is None:
+        abort(404)
+    obj_data = request.get_json()
+    ignore = ("id", "user_id", "created_at", "updated_at")
+    for k, v in obj_data.items():
+        if k not in ignore:
+            setattr(obj, k, v)
+    obj.save()
+    return jsonify(obj.to_dict()), 200
