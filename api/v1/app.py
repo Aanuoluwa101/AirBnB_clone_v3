@@ -6,7 +6,8 @@ from flask import make_response
 from flask import jsonify
 from models import storage
 from api.v1.views import app_views
-from os import getenv
+import os
+#from os import getenv
 
 
 app = Flask(__name__)
